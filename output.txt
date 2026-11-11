@@ -1,0 +1,259 @@
+
+========================================================================
+Q1. Passive ADP: model and utility update
+========================================================================
+Initial counts: N(s11,Down) = 5 | N(s11,Down,s21) = 3
+Initial P(s21|s11,Down) = 0.6
+
+After observing <s11, Down, s21, -0.04>:
+  N(s11,Down)        = 6
+  N(s11,Down,s21)    = 4
+  P(s21|s11,Down)    = 4/6 = 0.6667
+  P(s12|s11,Down)    = 0.1667 , P(s11|s11,Down) = 0.1667
+  (s21,Right) model  : P(s22)=0.60 P(s11)=0.20 P(s21)=0.20
+
+Bellman equations (policy evaluation):
+  V(s11) = -0.04 + 0.9*[0.1667*V(s11) + 0.1667*V(s12) + 0.6667*V(s21)]
+  V(s21) = -0.04 + 0.9*[0.2000*V(s11) + 0.2000*V(s21) + 0.6000*V(s22)]
+
+Linear system  (I - gamma*P) V = b :
+  M =
+ [[ 0.85 -0.6 ]
+ [-0.18  0.82]] 
+  b = [ 0.11 -0.58]
+
+Solved utilities:
+  V(s11) = -0.4377
+  V(s21) = -0.8034
+  V(s12) = +1 , V(s22) = -1 (terminal)
+  (iterative check: V(s11)=-0.4377, V(s21)=-0.8034)
+
+========================================================================
+Q2. Temporal-Difference / Q-Learning update
+========================================================================
+alpha=0.5 gamma=0.9 ; Q initialised to zeros (16x4)
+
+Transition 1: (s=14, a=Right, r=1.0, s'=15, terminal)
+   TD_Target = r = 1.0000
+   Current Q(s,a) = 0.0000 | TD_Error = 1.0000 - 0.0000 = 1.0000 | Updated Q(s,a) = 0.5000
+
+Transition 2: (s=13, a=Right, r=0.0, s'=14)
+   TD_Target = r + gamma*max_a' Q(s',a') = 0.0 + 0.9*0.5000 = 0.4500
+   Current Q(s,a) = 0.0000 | TD_Error = 0.4500 - 0.0000 = 0.4500 | Updated Q(s,a) = 0.2250
+
+Transition 3: (s=10, a=Down, r=0.0, s'=14)
+   TD_Target = r + gamma*max_a' Q(s',a') = 0.0 + 0.9*0.5000 = 0.4500
+   Current Q(s,a) = 0.0000 | TD_Error = 0.4500 - 0.0000 = 0.4500 | Updated Q(s,a) = 0.2250
+
+Transition 4: (s=1, a=Down, r=0.0, s'=5, terminal)
+   TD_Target = r = 0.0000
+   Current Q(s,a) = 0.0000 | TD_Error = 0.0000 - 0.0000 = 0.0000 | Updated Q(s,a) = 0.0000
+
+Transition 5: (s=14, a=Right, r=1.0, s'=15, terminal)
+   TD_Target = r = 1.0000
+   Current Q(s,a) = 0.5000 | TD_Error = 1.0000 - 0.5000 = 0.5000 | Updated Q(s,a) = 0.7500
+
+Transition 6: (s=13, a=Right, r=0.0, s'=14)
+   TD_Target = r + gamma*max_a' Q(s',a') = 0.0 + 0.9*0.7500 = 0.6750
+   Current Q(s,a) = 0.2250 | TD_Error = 0.6750 - 0.2250 = 0.4500 | Updated Q(s,a) = 0.4500
+
+
+========================================================================
+Q3. Exploration vs. exploitation (Frozen Lake, 2000 episodes)
+========================================================================
+
+--- epsilon = 0.0 ---
+Total successful episodes : 1900 / 2000
+Final success rate (last 100 eps): 100.0%
+Total exploratory actions : 0
+Greedy policy (<,v,>,^ ; '.'=never learned; H hole; G goal):
+  > > v .
+  . H v H
+  . . v H
+  H . > G
+Greedy rollout from S reaches goal: True  path=[0, 1, 2, 6, 10, 14, 15]
+
+--- epsilon = 0.1 ---
+Total successful episodes : 1712 / 2000
+Final success rate (last 100 eps): 91.0%
+Total exploratory actions : 1242
+Greedy policy (<,v,>,^ ; '.'=never learned; H hole; G goal):
+  > > v <
+  ^ H v H
+  > > v H
+  H ^ > G
+Greedy rollout from S reaches goal: True  path=[0, 1, 2, 6, 10, 14, 15]
+
+--- epsilon = 0.3 ---
+Total successful episodes : 1250 / 2000
+Final success rate (last 100 eps): 64.0%
+Total exploratory actions : 4197
+Greedy policy (<,v,>,^ ; '.'=never learned; H hole; G goal):
+  v > v <
+  v H v H
+  > > v H
+  H > > G
+Greedy rollout from S reaches goal: True  path=[0, 4, 8, 9, 10, 14, 15]
+
+--- epsilon = 0.5 ---
+Total successful episodes : 750 / 2000
+Final success rate (last 100 eps): 46.0%
+Total exploratory actions : 7191
+Greedy policy (<,v,>,^ ; '.'=never learned; H hole; G goal):
+  v > v <
+  v H v H
+  > v v H
+  H > > G
+Greedy rollout from S reaches goal: True  path=[0, 4, 8, 9, 13, 14, 15]
+
+--- epsilon = 0.0 with plain argmax tie-breaking (ties -> Left) ---
+Total successful episodes : 0 / 2000 | final success rate 0.0% | exploratory actions 0
+Greedy policy:
+  . . . .
+  . H . H
+  . . . H
+  H . . G
+Q-table all zeros: True
+
+Robustness check, mean over 20 seeds (final-window success %, total successes):
+  eps=0.0 : final window 100.0% , total successes 1871
+  eps=0.1 : final window 88.7% , total successes 1670
+  eps=0.3 : final window 66.0% , total successes 1232
+  eps=0.5 : final window 39.5% , total successes 765
+
+Why can a purely greedy agent fail?
+  Q starts at all zeros and the only non-zero reward is +1 at the goal, so for a
+  long time every action looks equally good (a tie). A purely greedy agent
+  (eps = 0) only exploits what it already knows, and it knows nothing: with
+  plain argmax it always breaks ties with action 0 (Left). From S=0 'Left' is an
+  invalid move, so it stays in state 0 for all 100 steps, never sees a reward,
+  and every TD-target is 0 + gamma*0 = 0, so Q never changes: 0 successes in
+  2000 episodes (see the extra eps=0 / argmax run above). The agent can never
+  discover the good policy because it never tries anything else.
+  In the random-tie-break run, eps=0 happens to succeed, but only because the
+  random tie-breaking is itself a hidden form of exploration. Even then the
+  agent commits to the first path it finds (many states stay unlearned, '.'),
+  which is luck and not guaranteed optimal or robust; in a larger/stochastic
+  map it would lock into a poor policy.
+  Trade-off seen in the results: larger eps keeps exploring (more exploratory
+  actions) but its on-policy success rate during training drops (eps=0.5 ~ 40-46%)
+  because random moves often fall into holes; small eps (0.1) gives a good
+  balance. The learned greedy policy reaches the goal for every eps tested
+  (except plain-argmax eps=0).
+
+========================================================================
+Q4. Tabular Q-learning on 4x4 Frozen Lake
+========================================================================
+alpha=0.5 gamma=0.9 eps=0.2 episodes=2000 max_steps=100
+
+Final Q-table (rows = states 0..15; cols = Left, Down, Right, Up):
+state |    Left      Down     Right       Up
+    0 |    0.5314    0.5905    0.5905    0.5314
+    1 |    0.5314    0.0000    0.6561    0.5905
+    2 |    0.5905    0.7290    0.5905    0.6561
+    3 |    0.6561    0.0000    0.5720    0.5167
+    4 |    0.5905    0.6561    0.0000    0.5314
+    5 |    0.0000    0.0000    0.0000    0.0000
+    6 |    0.0000    0.8100    0.0000    0.6561
+    7 |    0.0000    0.0000    0.0000    0.0000
+    8 |    0.6561    0.0000    0.7290    0.5905
+    9 |    0.6561    0.8100    0.8100    0.0000
+   10 |    0.7290    0.9000    0.0000    0.7290
+   11 |    0.0000    0.0000    0.0000    0.0000
+   12 |    0.0000    0.0000    0.0000    0.0000
+   13 |    0.0000    0.8049    0.9000    0.7290
+   14 |    0.8100    0.9000    1.0000    0.8100
+   15 |    0.0000    0.0000    0.0000    0.0000
+
+Learned greedy policy pi(s)=argmax_a Q(s,a)  (0=L,1=D,2=R,3=U; None = terminal):
+[1, 2, 1, 0, 1, None, 1, None, 2, 2, 1, None, None, 2, 2, None]
+
+Policy grid:
+  v > v <
+  v H v H
+  > > v H
+  H > > G
+
+Greedy rollout from S: reaches goal = True, path = [0, 4, 8, 9, 10, 14, 15] (length 6 steps)
+Optimal value at start V*(0) = gamma^5 = 0.5905 ; learned max Q(0,.) = 0.5905
+Training success rate (last 100 eps): 77.0%
+
+========================================================================
+Q5. Decaying exploration vs. fixed epsilon
+========================================================================
+
+--- fixed eps=0.2 ---
+Total successful episodes : 1480 / 2000
+Final success rate (last 100 training eps): 77.0%
+Total exploratory actions : 2643
+Greedy-policy success (no exploration): True, path=[0, 4, 8, 9, 10, 14, 15]
+Final Q-table:
+state |    Left      Down     Right       Up
+    0 |    0.5314    0.5905    0.5905    0.5314
+    1 |    0.5314    0.0000    0.6561    0.5905
+    2 |    0.5905    0.7290    0.5905    0.6561
+    3 |    0.6561    0.0000    0.5720    0.5167
+    4 |    0.5905    0.6561    0.0000    0.5314
+    5 |    0.0000    0.0000    0.0000    0.0000
+    6 |    0.0000    0.8100    0.0000    0.6561
+    7 |    0.0000    0.0000    0.0000    0.0000
+    8 |    0.6561    0.0000    0.7290    0.5905
+    9 |    0.6561    0.8100    0.8100    0.0000
+   10 |    0.7290    0.9000    0.0000    0.7290
+   11 |    0.0000    0.0000    0.0000    0.0000
+   12 |    0.0000    0.0000    0.0000    0.0000
+   13 |    0.0000    0.8049    0.9000    0.7290
+   14 |    0.8100    0.9000    1.0000    0.8100
+   15 |    0.0000    0.0000    0.0000    0.0000
+Learned greedy policy (0=L,1=D,2=R,3=U): [1, 2, 1, 0, 1, None, 1, None, 2, 2, 1, None, None, 2, 2, None]
+  v > v <
+  v H v H
+  > > v H
+  H > > G
+
+--- decaying eps ---
+Total successful episodes : 1706 / 2000
+Final success rate (last 100 training eps): 96.0%
+Total exploratory actions : 1908
+Greedy-policy success (no exploration): True, path=[0, 1, 2, 6, 10, 14, 15]
+Final Q-table:
+state |    Left      Down     Right       Up
+    0 |    0.5314    0.5905    0.5905    0.5314
+    1 |    0.5314    0.0000    0.6561    0.5905
+    2 |    0.5905    0.7290    0.5905    0.6561
+    3 |    0.6561    0.0000    0.4973    0.4562
+    4 |    0.5728    0.6561    0.0000    0.5313
+    5 |    0.0000    0.0000    0.0000    0.0000
+    6 |    0.0000    0.8100    0.0000    0.6561
+    7 |    0.0000    0.0000    0.0000    0.0000
+    8 |    0.3601    0.0000    0.7290    0.5148
+    9 |    0.4990    0.6953    0.8100    0.0000
+   10 |    0.7290    0.9000    0.0000    0.7290
+   11 |    0.0000    0.0000    0.0000    0.0000
+   12 |    0.0000    0.0000    0.0000    0.0000
+   13 |    0.0000    0.7583    0.9000    0.6834
+   14 |    0.8100    0.9000    1.0000    0.8100
+   15 |    0.0000    0.0000    0.0000    0.0000
+Learned greedy policy (0=L,1=D,2=R,3=U): [2, 2, 1, 0, 1, None, 1, None, 2, 2, 1, None, None, 2, 2, None]
+  > > v <
+  v H v H
+  > > v H
+  H > > G
+
+Decaying schedule: eps at episode 0=1.000, 100=0.606, 300=0.222, reaches eps_min=0.05 at episode 598
+
+Robustness, mean over 20 seeds:
+  fixed eps=0.2  final-window success 78.1% | exploratory actions 2640 | greedy policy reaches goal 20/20
+  decaying eps   final-window success 94.8% | exploratory actions 1772 | greedy policy reaches goal 20/20
+
+Effect of decreasing exploration:
+  Early on, eps near 1 makes the agent act almost randomly, so it visits many
+  states and finds the goal reward quickly; the +1 then spreads backwards through
+  Q. As eps decays towards 0.05 the agent increasingly exploits what it has
+  learned, so almost every late episode follows the near-optimal path and the
+  training success rate rises close to 100%, clearly above fixed eps=0.2
+  (which keeps taking ~20% random moves, so it keeps falling into holes
+  even with a good Q-table). Decay also uses fewer exploratory actions in
+  total. Both end with a greedy policy that reaches the goal in the optimal 6
+  steps (there are several equally optimal paths, so the arrows can differ),
+  but decaying eps gives better on-policy performance: explore first, exploit later.
